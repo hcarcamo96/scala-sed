@@ -1,5 +1,7 @@
 package exercise.sed
 
+import scala.annotation.tailrec
+
 object SedService {
   type OptionMap = Map[String, List[Any]]
 
@@ -40,25 +42,24 @@ E-mail bug reports to: <bug-sed@gnu.org>.
     )
   }
 
-  def validateOptions(map: OptionMap): Either[String, OptionMap] = {
-    val usage = getUsage()
-
+  def validateOptionsLength(map: OptionMap): Either[String, OptionMap] = {
     if (map("f").length > 1)
-      Left(s"The option -f should not appear at most once. \n $usage")
+      Left(s"The option -f should not appear at most once.")
     else if (map("n").length > 1)
-      Left(s"The option -n should not appear at most once. \n $usage")
+      Left(s"The option -n should not appear at most once.")
     else if (map("i").length > 1)
-      Left(s"The option -i should not appear at most once. \n $usage")
+      Left(s"The option -i should not appear at most once.")
     else if (map("e").length < 1)
-      Left(s"The option -i should not appear at least once. \n $usage")
+      Left(s"The option -i should not appear at least once.")
     else if (map("inputFile").length != 1)
-      Left(s"An input file must be provided. \n $usage")
+      Left(s"An input file must be provided.")
     else Right(map)
   }
 
+  @tailrec
   def parseOption(map: OptionMap, list: List[String]): Either[String, OptionMap] = {
     list match {
-      case Nil => validateOptions(map)
+      case Nil => validateOptionsLength(map)
       case "-f" :: value :: tail =>
         parseOption(map ++ Map("f" -> (value :: map("f"))), tail)
       case "-e" :: value :: tail =>
@@ -67,15 +68,35 @@ E-mail bug reports to: <bug-sed@gnu.org>.
         parseOption(map ++ Map("n" -> (true :: map("n"))), tail)
       case "-i" :: tail =>
         parseOption(map ++ Map("i" -> (true :: map("i"))), tail)
-      case "-h" :: _ =>
-        Left(getUsage())
-      case filename :: opt2 :: tail if (opt2(0) == '-') =>
-        parseOption(map ++ Map("inputFile" -> (filename :: map("inputFile"))), tail)
+      case "-h" :: _ => Left(getUsage())
       case filename :: Nil =>
-        parseOption(map ++ Map("inputFile" -> (filename :: map("inputFile"))), list.tail)
-      case option :: tail => Left(s"Unknown option: $option. \n ${getUsage()}")
+        parseOption(map ++ Map("inputFile" -> (filename :: map("inputFile"))), Nil)
+      case option :: _ => Left(s"Unknown option: $option. \n ${getUsage()}")
 
     }
   }
 
+  def applyCommand(command: Command, inputFile: String): Option[List[String]] = {
+    FileManager.readFileByLines(inputFile) match {
+      case Some(contentIterator) =>
+        val contentLines = contentIterator.toList
+        val completedLines = this.executeReplacement(contentLines, command, List[String](), List[String]())
+        Some(completedLines)
+      case None => None
+    }
+  }
+
+  // TODO: return the shown lines
+  @tailrec
+  def executeReplacement(pendingLines: List[String], command: Command, completedLines: List[String], shownLines: List[String]): List[String] =
+    pendingLines match {
+      case Nil => completedLines
+      case line :: tail =>
+        val replacedLine = command.replaceInLine(line)
+
+        if (command.flags.contains('p'))
+          this.executeReplacement(tail, command, replacedLine :: completedLines, replacedLine :: shownLines)
+        else
+          this.executeReplacement(tail, command, replacedLine :: completedLines, line :: shownLines)
+    }
 }

@@ -1,23 +1,53 @@
 package exercise.sed
 
-import java.io.{File, PrintWriter}
+import java.io.{File, FileNotFoundException, IOException, PrintWriter}
 import scala.io.Source
 
 object FileManager {
   // Returns the file data as String
-  def readFile(pathName: String): String =
-    Source.fromFile(pathName).mkString
-
-  // Returns the file data as String Iterator
-  def readFileByLines(pathName: String): Iterator[String] =
-    Source.fromFile(pathName).getLines()
-
-  def writeFile(pathName: String, data: String): Unit = {
-    val writer = new PrintWriter(new File(pathName))
-
-    writer.write(data)
-    writer.close()
+  def readFile(pathName: String): Option[String] = {
+    try {
+      val sourceFile = Source.fromFile(pathName)
+      val sourceStr = sourceFile.mkString
+      sourceFile.close()
+      Some(sourceStr)
+    } catch {
+      case _: FileNotFoundException =>
+        println("Couldn't find that file.")
+        None
+      case _: IOException =>
+        println("Had an IOException trying to read that file")
+        None
+    }
   }
 
-  def validateFilePath(filePath:String) = ???
+  // Returns the file data as String Iterator
+  def readFileByLines(pathName: String): Option[Iterator[String]] =
+    try {
+      val sourceFile = Source.fromFile(pathName)
+      val sourceLines = sourceFile.getLines()
+      sourceFile.close()
+      Some(sourceLines)
+    } catch {
+      case _: FileNotFoundException =>
+        println("Couldn't find that file.")
+        None
+      case _: IOException =>
+        println("Had an IOException trying to read that file")
+        None
+    }
+
+  def writeFile(pathName: String, data: String): Unit =
+    try {
+      val writer = new PrintWriter(new File(pathName))
+
+      writer.write(data)
+      writer.close()
+    } catch {
+      case _: FileNotFoundException =>
+        println("Couldn't find that file.")
+      case _: IOException =>
+        println("Had an IOException trying to read that file")
+    }
+
 }
