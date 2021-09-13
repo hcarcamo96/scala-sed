@@ -9,7 +9,7 @@ object FileManager {
     try {
       val sourceFile = Source.fromFile(pathName)
       val sourceStr = sourceFile.mkString
-      sourceFile.close()
+      //sourceFile.close()
       Some(sourceStr)
     } catch {
       case _: FileNotFoundException =>
@@ -22,17 +22,18 @@ object FileManager {
   }
 
   // Returns the file data as String Iterator
-  def readFileByLines(pathName: String): Option[Iterator[String]] =
+  def readFileByLines(pathName: String): Option[List[String]] =
     try {
       val sourceFile = Source.fromFile(pathName)
-      val sourceLines = sourceFile.getLines()
+      val sourceLines = sourceFile.getLines().toList
       sourceFile.close()
       Some(sourceLines)
     } catch {
       case _: FileNotFoundException =>
         println("Couldn't find that file.")
         None
-      case _: IOException =>
+      case e: IOException =>
+        println(e)
         println("Had an IOException trying to read that file")
         None
     }
