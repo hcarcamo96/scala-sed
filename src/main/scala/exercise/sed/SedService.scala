@@ -66,14 +66,14 @@ Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
   }
 
   @tailrec
-  def executeManyReplacements(commands: List[Command], pendingLines: List[String],sedOptionOutput: SedOptionOutput): SedOptionOutput =
+  def executeManyReplacements(commands: List[Command], pendingLines: List[String],sedOptionOutput: SedOptionsOutput): SedOptionsOutput =
     pendingLines match {
       case Nil => sedOptionOutput
       case line :: tail =>
         val lineOutput = executeReplacement(commands, line, List[String]())
         val completedLines  = lineOutput.line :: sedOptionOutput.completedLines
         val stackLines = lineOutput.stackLine.reverse ++ sedOptionOutput.stackLines
-        this.executeManyReplacements(commands, tail, SedOptionOutput(completedLines,stackLines))
+        this.executeManyReplacements(commands, tail, SedOptionsOutput(completedLines,stackLines))
     }
 
   @tailrec
@@ -89,12 +89,12 @@ Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
           this.executeReplacement(tail, replacedLine, stackLine)
     }
 
-  def executeOneCommand(commandString: String, filePath: String): Option[SedOptionOutput] = {
+  def executeOneCommand(commandString: String, filePath: String): Option[SedOptionsOutput] = {
     FileManager.readFileByLines(filePath) match {
       case Some(contentLines) =>
         Command.validateCommand(commandString) match {
           case Right(command: Command) =>
-            val sedOptionOutput = SedOptionOutput(List[String](),List[String]())
+            val sedOptionOutput = new EmptySedOptionsOutput()
             val replacementsOutput = this.executeManyReplacements(List(command), contentLines,sedOptionOutput)
             Some(replacementsOutput)
           case Left(message: String) =>
@@ -107,7 +107,7 @@ Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
     }
   }
 
-  def manageOutput(executionOutput: Option[SedOptionOutput], sedOptions: SedOptions):Option[String] = {
+  def manageOutput(executionOutput: Option[SedOptionsOutput], sedOptions: SedOptions):Option[String] = {
     val filepath = sedOptions.inputFile.head
 
     executionOutput match {
@@ -150,7 +150,7 @@ Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
     val executionOutput =
       FileManager.readFileByLines(filepath) match {
         case Some(contentLines) =>
-          val sedOptionOutput = SedOptionOutput(List[String](),List[String]())
+          val sedOptionOutput = new EmptySedOptionsOutput()
           val replacementsOutput = executeManyReplacements(commands, contentLines, sedOptionOutput)
           Some(replacementsOutput)
         case None =>
