@@ -1,4 +1,4 @@
-package exercise.sed
+package exercise.sed.commands
 
 import java.io.{File, FileNotFoundException, IOException, PrintWriter}
 import scala.io.Source
@@ -9,7 +9,7 @@ object FileManager {
     try {
       val sourceFile = Source.fromFile(pathName)
       val sourceStr = sourceFile.mkString
-      //sourceFile.close()
+
       Some(sourceStr)
     } catch {
       case _: FileNotFoundException =>

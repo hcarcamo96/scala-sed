@@ -1,5 +1,8 @@
 package exercise.sed
 
+import exercise.sed.commands.{Command, FileManager}
+import exercise.sed.options.{EmptySedOptionsOutput, LineOutput, SedOptions, SedOptionsOutput}
+
 import scala.annotation.tailrec
 import java.time.LocalDateTime
 

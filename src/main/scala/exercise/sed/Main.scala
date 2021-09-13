@@ -1,5 +1,7 @@
 package exercise.sed
 
+import exercise.sed.options.EmptySedOptions
+
 object Main extends App {
   val usage = SedService.usage
   val argList = args.toList.slice(1, args.length)

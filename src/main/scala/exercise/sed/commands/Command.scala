@@ -1,4 +1,6 @@
-package exercise.sed
+package exercise.sed.commands
+
+import exercise.sed.options.SedOptions
 
 class Command(val operation: String, val regexp: String, val replacement: String, val flags: String) {
   def replaceInLine(line: String): String =

@@ -1,4 +1,4 @@
-package exercise.sed
+package exercise.sed.options
 
 case class SedOptions(
                fOptions: List[String],
