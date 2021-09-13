@@ -83,7 +83,7 @@ Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
       case command :: tail =>
         val replacedLine = command.replaceInLine(line)
 
-        if (command.flags.contains('p'))
+        if (command.flags.contains('p') && replacedLine != line)
           this.executeReplacement(tail, replacedLine, replacedLine :: stackLine)
         else
           this.executeReplacement(tail, replacedLine, stackLine)
