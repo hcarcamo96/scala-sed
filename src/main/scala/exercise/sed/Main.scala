@@ -6,7 +6,7 @@ object Main extends App {
 
   val result = argList match {
     case commandString :: filepath :: Nil =>
-      SedService.executeOneCommand(commandString,filepath)
+      SedService.executeOneCommand(commandString, filepath)
     case _ :: _ :: tail =>
       SedService.parseOption(new EmptySedOptions(), argList) match {
         case Right(optionsMap) =>

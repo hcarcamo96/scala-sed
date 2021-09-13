@@ -66,43 +66,72 @@ Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
   }
 
   @tailrec
-  def executeManyReplacements(pendingCommands: List[Command], pendingLines: List[String], completedLines: List[String]): List[String] =
-    pendingCommands match {
-      case Nil => completedLines
-      case command :: tail =>
-        val replacedLines = executeReplacement(command: Command, pendingLines: List[String], List[String](), List[String]())
-        this.executeManyReplacements(tail, replacedLines, replacedLines)
+  def executeManyReplacements(commands: List[Command], pendingLines: List[String],sedOptionOutput: SedOptionOutput): SedOptionOutput =
+    pendingLines match {
+      case Nil => sedOptionOutput
+      case line :: tail =>
+        val lineOutput = executeReplacement(commands, line, List[String]())
+        val completedLines  = lineOutput.line :: sedOptionOutput.completedLines
+        val stackLines = lineOutput.stackLine.reverse ++ sedOptionOutput.stackLines
+        this.executeManyReplacements(commands, tail, SedOptionOutput(completedLines,stackLines))
     }
 
-  // TODO: return the shown lines
   @tailrec
-  def executeReplacement(command: Command, pendingLines: List[String], completedLines: List[String], shownLines: List[String]): List[String] =
-    pendingLines match {
-      case Nil => completedLines
-      case line :: tail =>
+  def executeReplacement(pendingCommands: List[Command], line:String, stackLine:List[String]): LineOutput =
+    pendingCommands match {
+      case Nil => LineOutput(line, stackLine)
+      case command :: tail =>
         val replacedLine = command.replaceInLine(line)
 
         if (command.flags.contains('p'))
-          this.executeReplacement(command, tail, replacedLine :: completedLines, replacedLine :: shownLines)
+          this.executeReplacement(tail, replacedLine, replacedLine :: stackLine)
         else
-          this.executeReplacement(command, tail, replacedLine :: completedLines, line :: shownLines)
+          this.executeReplacement(tail, replacedLine, stackLine)
     }
 
-  def executeOneCommand(commandString: String, filePath: String): Either[String, List[String]] = {
+  def executeOneCommand(commandString: String, filePath: String): Option[SedOptionOutput] = {
     FileManager.readFileByLines(filePath) match {
       case Some(contentLines) =>
         Command.validateCommand(commandString) match {
           case Right(command: Command) =>
-            Right(this.executeReplacement(command, contentLines, List[String](), List[String]()))
+            val sedOptionOutput = SedOptionOutput(List[String](),List[String]())
+            val replacementsOutput = this.executeManyReplacements(List(command), contentLines,sedOptionOutput)
+            Some(replacementsOutput)
           case Left(message: String) =>
-            Left(message)
+            println(message)
+            None
         }
       case None =>
-        Left("There is no file content")
+        println("There is no file content")
+        None
     }
   }
 
-  def executeManyCommands(sedOptions: SedOptions): Either[List[String], String] = {
+  def manageOutput(executionOutput: Option[SedOptionOutput], sedOptions: SedOptions):Option[String] = {
+    val filepath = sedOptions.inputFile.head
+
+    executionOutput match {
+      case Some(changedLines) =>
+
+        val completedLinesData = changedLines.completedLines.reverse.mkString("\n")
+        val stackLinesData = changedLines.stackLines.reverse.mkString("\n")
+        val iOptions = sedOptions.iOptions
+        val nOptions = sedOptions.nOptions
+
+        if(iOptions.nonEmpty && iOptions.head) {
+          FileManager.writeFile(s"${LocalDateTime.now()}-${filepath}",completedLinesData)
+          Some("")
+        }else if (nOptions.nonEmpty && nOptions.head){
+          Some(stackLinesData)
+        }else {
+          Some(completedLinesData)
+        }
+      case None =>
+        None
+    }
+  }
+
+  def executeManyCommands(sedOptions: SedOptions): Option[String] = {
     val commandStrings = Command.getCommandStrings(sedOptions)
 
     val validatedCommands: List[Either[String, Command]] = commandStrings
@@ -111,39 +140,24 @@ Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
     val failures = validatedCommands collect { case Left(f) => f }
     val commands = validatedCommands collect { case Right(r) => r }
 
-    if (failures.nonEmpty)
-      return Left(failures)
+    if (failures.nonEmpty) {
+      println(failures)
+      return None
+    }
 
     val filepath = sedOptions.inputFile.head
 
-    val completedLines =
+    val executionOutput =
       FileManager.readFileByLines(filepath) match {
         case Some(contentLines) =>
-          val completedLines = executeManyReplacements(commands, contentLines, List[String]())
-          Right(completedLines)
+          val sedOptionOutput = SedOptionOutput(List[String](),List[String]())
+          val replacementsOutput = executeManyReplacements(commands, contentLines, sedOptionOutput)
+          Some(replacementsOutput)
         case None =>
-          Left(List("There is no file content"))
+          println("There is no file content")
+          None
       }
 
-    completedLines match {
-      case Right(lines) =>
-        val data = lines.mkString("\n")
-        val iOptions = sedOptions.iOptions
-        val nOptions = sedOptions.nOptions
-
-        if(iOptions.nonEmpty && iOptions.head) {
-
-          FileManager.writeFile(s"${LocalDateTime.now()}-${filepath}",data)
-
-          Right("")
-        }else if (nOptions.nonEmpty && nOptions.head){
-          Right(data) // print only the displayable changes
-        }else{
-          Right(data)
-        }
-      case Left(messages) => Left(messages)
-    }
-
-
+    this.manageOutput(executionOutput,sedOptions)
   }
 }
